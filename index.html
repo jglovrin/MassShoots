@@ -1,99 +1,123 @@
-<h1> now thats alot of damage </h1>
 <!DOCTYPE html>
-<meta charset="utf-8">
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
 
-<!-- Load d3.js -->
-<script src="https://d3js.org/d3.v4.js"></script>
-<script>
+    <title>Mass Shooting Visualization</title>
+    <style>
+      body {
+        margin: 5%;
+      }
+      .domain {
+        display: none;
+      }
+      .tick line {
+        stroke: #C0C0BB;
+      }
+      .tick text {
+        fill: #8E8883;
+        font-size: 20pt;
+        font-family: sans-serif;
+      }
+      .axis-label {
+        fill: #635F5D;
+        font-size: 50pt;
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+ <h1>US Mass Shootings by year</h1>
+<h3><a href="https://jglovrin.github.io/MassShoots/">Visualization</a> <a href="https://jglovrin.github.io/MassShoots/documentation"><span style="text-decoration: underline;">Documentation</span></a></h3>
+    <svg width="960" height="500"></svg>
+    <h3> use radio buttons to select a year to look at <br> hover over point for details </h3>
+    <script>
+    // bunch of junk variables
+      const xValue = d => d.Date;
+      const xLabel = 'Date';
+      const yValue = d => d.Dead;
+      const yLabel = 'Dead';
+      const margin = { left: 120, right: 30, top: 20, bottom: 120 };
 
-// set the dimensions and margins of the graph
-var margin = {top: 30, right: 30, bottom: 70, left: 60},
-    width = 460 - margin.left - margin.right,
-    height = 400 - margin.top - margin.bottom;
+      // make an svg
+      const svg = d3.select('svg');
+      const width = svg.attr('width');
+      const height = svg.attr('height');
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
 
-// append the svg object to the body of the page
-var svg = d3.select("#my_dataviz")
-  .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform",
-          "translate(" + margin.left + "," + margin.top + ")");
+      //parse the csv string time into d3 time
+     var	parser = d3.timeParse("%m/%d/%y");
 
-// Initialize the X axis
-var x = d3.scaleBand()
-  .range([ 0, width ])
-  .padding(1);
-var xAxis = svg.append("g")
-  .attr("transform", "translate(0," + height + ")")
+      const g = svg.append('g')
+          .attr('transform', `translate(${margin.left},${margin.top})`);
+      const yAxisG = g.append('g');
+      const xAxisG = g.append('g')
+          .attr('transform', `translate(0, ${innerHeight})`);
+      
+      //making the axis
+      yAxisG.append('text')
+          .attr('class', 'axis-label')
+          .attr('x', -innerHeight / 2)
+          .attr('y', -60)
+          .attr('transform', `rotate(-90)`)
+          .style('text-anchor', 'middle')
+          .text(yLabel);
 
-// Initialize the Y axis
-var y = d3.scaleLinear()
-  .range([ height, 0]);
-var yAxis = svg.append("g")
-  .attr("class", "myYaxis")
+      xAxisG.append('text')
+          .attr('class', 'axis-label')
+          .attr('x', innerWidth / 2)
+          .attr('y', 100)
+          .text(xLabel);
 
+          //set axis scales to the right variables
+      const yScale = d3.scaleLinear();
+      const xScale = d3.scaleTime();
 
-// A function that create / update the plot for a given variable:
-function update(selectedVar) {
+      const yAxis = d3.axisLeft()
+        .scale(yScale)
+        .ticks(5)
+        .tickPadding(15)
+        .tickSize(-innerWidth);
 
-  // Parse the Data
-  d3.csv("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/barplot_change_data.csv", function(data) {
+      const xAxis = d3.axisBottom()
+        .scale(xScale)
+        .tickPadding(15)
+        .tickSize(-innerHeight);
 
-    // X axis
-    x.domain(data.map(function(d) { return d.group; }))
-    xAxis.transition().duration(1000).call(d3.axisBottom(x))
+      const row = d => {
+        d.Date = new Date(d.Date);
+        d.Dead = +d.Dead;
+        return d;
+      };
+      //load csv
+      d3.csv('https://raw.githubusercontent.com/jglovrin/MassShoots/master/massshoointgs2017.csv', row, data => {
 
-    // Add Y axis
-    y.domain([0, d3.max(data, function(d) { return +d[selectedVar] }) ]);
-    yAxis.transition().duration(1000).call(d3.axisLeft(y));
+    //make the axis the right size
+        yScale
+          .domain(d3.extent(data, yValue))
+          .range([innerHeight, 0])
+          .nice();
 
-    // variable u: map data to existing circle
-    var j = svg.selectAll(".myLine")
-      .data(data)
-    // update lines
-    j
-      .enter()
-      .append("line")
-      .attr("class", "myLine")
-      .merge(j)
-      .transition()
-      .duration(1000)
-        .attr("x1", function(d) { console.log(x(d.group)) ; return x(d.group); })
-        .attr("x2", function(d) { return x(d.group); })
-        .attr("y1", y(0))
-        .attr("y2", function(d) { return y(d[selectedVar]); })
-        .attr("stroke", "grey")
+        xScale
+          .domain(d3.extent(data, xValue))
+          .range([0, innerWidth])
+          .nice();
 
-
-    // variable u: map data to existing circle
-    var u = svg.selectAll("circle")
-      .data(data)
-    // update bars
-    u
-      .enter()
-      .append("circle")
-      .merge(u)
-      .transition()
-      .duration(1000)
-        .attr("cx", function(d) { return x(d.group); })
-        .attr("cy", function(d) { return y(d[selectedVar]); })
-        .attr("r", 8)
-        .attr("fill", "#69b3a2");
-
-
-  })
-
-}
-
-// Initialize plot
-update('var1')
-
-</script>
-
-<!-- Add 2 buttons -->
-<button onclick="update('var1')">Variable 1</button>
-<button onclick="update('var2')">Variable 2</button>
-
-<!-- Create a div where the graph will take place -->
-<div id="my_dataviz"></div>
+          //not really sure
+        g.selectAll('circle').data(data)
+          .enter().append('circle')
+            .attr('cx', d => xScale(xValue(d)))
+            .attr('cy', d => yScale(yValue(d)))
+            .attr('fill-opacity', 0.6)
+            .attr('r', 8);
+            
+        yAxisG.call(yAxis);
+        xAxisG.call(xAxis);
+       
+      });
+    </script>
+  </body>
+</html>
